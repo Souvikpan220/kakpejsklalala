@@ -355,3 +355,26 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"❌ Polling Error: {e}")
             time.sleep(5)
+
+# Isko bot.py ke LAST mein add karo (if __name__ == "__main__": ke upar)
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is Running!"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=10000)
+
+if __name__ == "__main__":
+    import threading
+    threading.Thread(target=admin.start_monitor, daemon=True).start()
+    threading.Thread(target=run_flask, daemon=True).start()
+    
+    while True:
+        try:
+            bot.polling(none_stop=True, interval=0, timeout=20)
+        except Exception as e:
+            print(f"Error: {e}")
+            time.sleep(5)
