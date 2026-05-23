@@ -1,3 +1,4 @@
+cat > database.py << 'EOF'
 import sqlite3
 from datetime import datetime, timedelta
 import config
@@ -8,88 +9,34 @@ def get_db():
 def init_database():
     conn = get_db()
     cursor = conn.cursor()
-    
-    # Users table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            first_name TEXT,
-            search_count INTEGER DEFAULT 0,
-            search_limit INTEGER DEFAULT 3,
-            is_banned BOOLEAN DEFAULT 0,
-            is_vip BOOLEAN DEFAULT 0,
-            vip_expiry DATE,
-            joined_date DATE DEFAULT CURRENT_DATE
-        )
-    ''')
-    
-    # Admins table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS admins (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            added_by INTEGER,
-            added_date DATE DEFAULT CURRENT_DATE
-        )
-    ''')
-    
-    # VIP users table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS vip_users (
-            user_id INTEGER PRIMARY KEY,
-            duration_days INTEGER,
-            start_date DATE,
-            expiry_date DATE,
-            granted_by INTEGER
-        )
-    ''')
-    
-    # Search logs
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS search_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            feature TEXT,
-            query TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Feature usage stats
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS feature_stats (
-            feature_name TEXT PRIMARY KEY,
-            total_searches INTEGER DEFAULT 0,
-            last_used DATETIME
-        )
-    ''')
-    
-    # Settings
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT
-        )
-    ''')
-    
-    # Insert default settings
+    cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+        user_id INTEGER PRIMARY KEY, username TEXT, first_name TEXT,
+        search_count INTEGER DEFAULT 0, search_limit INTEGER DEFAULT 3,
+        is_banned BOOLEAN DEFAULT 0, is_vip BOOLEAN DEFAULT 0,
+        vip_expiry DATE, joined_date DATE DEFAULT CURRENT_DATE)''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS admins (
+        user_id INTEGER PRIMARY KEY, username TEXT,
+        added_by INTEGER, added_date DATE DEFAULT CURRENT_DATE)''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS vip_users (
+        user_id INTEGER PRIMARY KEY, duration_days INTEGER,
+        start_date DATE, expiry_date DATE, granted_by INTEGER)''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS search_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER,
+        feature TEXT, query TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS feature_stats (
+        feature_name TEXT PRIMARY KEY, total_searches INTEGER DEFAULT 0,
+        last_used DATETIME)''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY, value TEXT)''')
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maintenance_mode', '0')")
-    
-    # Insert admin
-    cursor.execute("INSERT OR IGNORE INTO admins (user_id, username) VALUES (?, ?)", 
-                   (config.ADMIN_ID, 'BRONX_ULTRA'))
-    
+    cursor.execute("INSERT OR IGNORE INTO admins (user_id, username) VALUES (?, ?)", (config.ADMIN_ID, 'BRONX_ULTRA'))
     conn.commit()
     conn.close()
 
 def register_user(user_id, username, first_name):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('''
-        INSERT OR IGNORE INTO users (user_id, username, first_name)
-        VALUES (?, ?, ?)
-    ''', (user_id, username, first_name))
+    cursor.execute("INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)", (user_id, username, first_name))
     conn.commit()
     conn.close()
 
@@ -104,11 +51,7 @@ def is_banned(user_id):
 def is_vip(user_id):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('''
-        SELECT is_vip, vip_expiry FROM users 
-        WHERE user_id = ? AND is_vip = 1 
-        AND (vip_expiry IS NULL OR vip_expiry >= DATE('now'))
-    ''', (user_id,))
+    cursor.execute("SELECT is_vip, vip_expiry FROM users WHERE user_id = ? AND is_vip = 1 AND (vip_expiry IS NULL OR vip_expiry >= DATE('now'))", (user_id,))
     result = cursor.fetchone()
     conn.close()
     return result is not None
@@ -116,7 +59,6 @@ def is_vip(user_id):
 def get_remaining_searches(user_id):
     if is_vip(user_id):
         return "♾️ Unlimited"
-    
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT search_limit - search_count FROM users WHERE user_id = ?", (user_id,))
@@ -127,18 +69,15 @@ def get_remaining_searches(user_id):
 def decrement_search(user_id):
     if is_vip(user_id):
         return True
-    
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT search_limit - search_count FROM users WHERE user_id = ?", (user_id,))
     remaining = cursor.fetchone()
-    
     if remaining and remaining[0] > 0:
         cursor.execute("UPDATE users SET search_count = search_count + 1 WHERE user_id = ?", (user_id,))
         conn.commit()
         conn.close()
         return True
-    
     conn.close()
     return False
 
@@ -167,34 +106,16 @@ def set_vip(user_id, duration_days):
     conn = get_db()
     cursor = conn.cursor()
     expiry_date = datetime.now() + timedelta(days=duration_days)
-    cursor.execute('''
-        UPDATE users SET is_vip = 1, vip_expiry = ?, search_count = 0, search_limit = 999999
-        WHERE user_id = ?
-    ''', (expiry_date.strftime('%Y-%m-%d'), user_id))
-    cursor.execute('''
-        INSERT OR REPLACE INTO vip_users (user_id, duration_days, start_date, expiry_date, granted_by)
-        VALUES (?, ?, DATE('now'), ?, ?)
-    ''', (user_id, duration_days, expiry_date.strftime('%Y-%m-%d'), config.ADMIN_ID))
+    cursor.execute("UPDATE users SET is_vip = 1, vip_expiry = ?, search_count = 0, search_limit = 999999 WHERE user_id = ?", (expiry_date.strftime('%Y-%m-%d'), user_id))
+    cursor.execute("INSERT OR REPLACE INTO vip_users (user_id, duration_days, start_date, expiry_date, granted_by) VALUES (?, ?, DATE('now'), ?, ?)", (user_id, duration_days, expiry_date.strftime('%Y-%m-%d'), config.ADMIN_ID))
     conn.commit()
     conn.close()
 
 def log_search(user_id, feature, query):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO search_logs (user_id, feature, query)
-        VALUES (?, ?, ?)
-    ''', (user_id, feature, query))
-    
-    # Update feature stats
-    cursor.execute('''
-        INSERT INTO feature_stats (feature_name, total_searches, last_used)
-        VALUES (?, 1, DATETIME('now'))
-        ON CONFLICT(feature_name) DO UPDATE SET
-        total_searches = total_searches + 1,
-        last_used = DATETIME('now')
-    ''', (feature,))
-    
+    cursor.execute("INSERT INTO search_logs (user_id, feature, query) VALUES (?, ?, ?)", (user_id, feature, query))
+    cursor.execute("INSERT INTO feature_stats (feature_name, total_searches, last_used) VALUES (?, 1, DATETIME('now')) ON CONFLICT(feature_name) DO UPDATE SET total_searches = total_searches + 1, last_used = DATETIME('now')", (feature,))
     conn.commit()
     conn.close()
 
@@ -249,8 +170,7 @@ def is_admin(user_id):
 def add_admin(user_id, username, added_by):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO admins (user_id, username, added_by) VALUES (?, ?, ?)",
-                   (user_id, username, added_by))
+    cursor.execute("INSERT OR IGNORE INTO admins (user_id, username, added_by) VALUES (?, ?, ?)", (user_id, username, added_by))
     conn.commit()
     conn.close()
 
@@ -279,3 +199,4 @@ def is_maintenance_mode():
     result = cursor.fetchone()
     conn.close()
     return result and result[0] == '1'
+EOF
