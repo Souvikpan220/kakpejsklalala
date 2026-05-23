@@ -1,14 +1,10 @@
-from utils.api_handler import make_api_request, format_response
+from utils.api_handler import call, fmt
 
-def process(bot, message):
-    text = message.text.strip()
-    
-    if not text.isdigit():
-        bot.reply_to(message, "❌ Please send Free Fire UID!\n📝 Example: `123456789`", parse_mode="Markdown")
+def process(bot, msg):
+    t = msg.text.strip()
+    if not t.isdigit():
+        bot.reply_to(msg, "❌ Send FF UID!\nExample: `123456789`", parse_mode="Markdown")
         return
-    
-    processing_msg = bot.reply_to(message, "🔍 *Fetching Free Fire Info...* 🎮", parse_mode="Markdown")
-    result = make_api_request('freefire_info', text)
-    formatted = format_response(result, "🎮 FREE FIRE INFO")
-    
-    bot.edit_message_text(formatted, chat_id=message.chat.id, message_id=processing_msg.message_id, parse_mode="Markdown")
+    m = bot.reply_to(msg, "🔍 *Searching...*", parse_mode="Markdown")
+    r = call('freefire_info', t)
+    bot.edit_message_text(fmt(r, "🎮 FREE FIRE INFO"), msg.chat.id, m.message_id, parse_mode="Markdown")
