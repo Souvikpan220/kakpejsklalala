@@ -1,5 +1,5 @@
-BOT_TOKEN = "8798121433:AAHWaM8fMXWmT4rtUHbAik22YODehyjHllo"
-ADMIN_ID = "7530266953"
+BOT_TOKEN = "8798651073:AAElG9Fcc16S5p_QCUhbvP9f7DS_Pi9wntU"
+ADMIN_ID = "6379443325"
 API_BASE = "https://osint-api-website-bronx.vercel.app/api"
 API_KEY = "op"
 
